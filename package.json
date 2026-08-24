@@ -34,7 +34,8 @@
     "test:smoke": "node --test tests/tunnel.smoke.ts",
     "test:e2e": "DSH_MCP_TUNNEL_E2E=1 node --test tests/tunnel.e2e.ts",
     "typecheck": "tsc --noEmit",
-    "build": "tsc -p tsconfig.build.json"
+    "build": "tsc -p tsconfig.build.json",
+    "prepublishOnly": "npm run build"
   },
   "dsh": {
     "bundle": {
