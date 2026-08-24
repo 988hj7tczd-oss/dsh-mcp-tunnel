@@ -1,0 +1,70 @@
+# 本文件由 dsh-mcp-tunnel 生成 —— 请勿手工编辑；重跑 mcp_tunnel_create 会重建。
+# dsh-mcp-tunnel 声明的栈契约（服务/镜像/flags 的权威说明见 README「栈契约」一节）：
+#   - mcp-proxy   : 隧道面向的 MCP 代理，终结入站鉴权，按 UPSTREAM_MCP_URL 转发；
+#   - cloudflared : 出站-only 隧道 agent，与 mcp-proxy 共享网络命名空间；
+#   - hello-mcp   : 可选 FastMCP 示例 server（用户无自有 HTTP MCP 端点时提供）。
+# 安全要点：宿主机仅绑定 127.0.0.1 回环调试端口，公网没有任何监听端口 ——
+# 公网可达性完全来自 cloudflared 的出站连接（Quick Tunnel）。
+name: {{projectName}}
+
+services:
+  mcp-proxy:
+    image: ghcr.io/anthropics/mcp-proxy:latest
+    restart: unless-stopped
+    env_file:
+      - ./proxy-config.env
+    environment:
+      # docker compose 变量替换：优先取部署目录 .env 中的 API_KEY
+      # （create 时自动生成并写入 .env，权限 0600；.env.example 只含占位说明）。
+      API_KEY: ${API_KEY:?set API_KEY in .env — see .env.example}
+    volumes:
+      - ./certs:/certs:ro
+    ports:
+      # 仅回环绑定：无公网监听端口（验收标准 1）。
+      - '127.0.0.1:{{hostProxyPort}}:80'
+    {{#if useHelloMcp}}
+    depends_on:
+      hello-mcp:
+        condition: service_healthy
+    {{/if}}
+    # 注：本镜像 healthcheck 依赖具体镜像版本；cloudflared 用 service_started
+    # 依赖以避免把整栈卡在镜像自带的健康探针上。如需探针，取消下一行注释：
+    # healthcheck:
+    #   test: ["CMD-SHELL", "wget -q -O- http://127.0.0.1/ >/dev/null 2>&1 || exit 1"]
+    #   interval: 5s
+    #   timeout: 3s
+    #   retries: 30
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    # 与 mcp-proxy 共享网络命名空间：cloudflared 只见本机地址，且只做出站连接。
+    network_mode: service:mcp-proxy
+    depends_on:
+      mcp-proxy:
+        condition: service_started
+    {{#if quickTunnel}}
+    # 免账号 Quick Tunnel：随机 trycloudflare.com 域名；公开 URL 从日志解析。
+    command: ['tunnel', '--no-autoupdate', '--protocol', 'quic', '--url', 'http://127.0.0.1:80']
+    {{else}}
+    # provider: anthropic —— 命名隧道模式（需你自己的 Cloudflare 账号/DNS/凭据）。
+    # 取消注释并按需填写后使用：
+    # volumes:
+    #   - ./cloudflared:/etc/cloudflared:ro
+    # command: ['tunnel', '--no-autoupdate', '--config', '/etc/cloudflared/config.yml', 'run', '{{tunnelName}}']
+    {{/if}}
+
+  {{#if useHelloMcp}}
+  hello-mcp:
+    build: ./hello-mcp
+    restart: unless-stopped
+    environment:
+      # FastMCP 示例 server，暴露 SSE 端点 /sse，携带 echo/uptime 两个工具。
+      HELLO_MCP_BIND: '0.0.0.0'
+      HELLO_MCP_PORT: '8000'
+    healthcheck:
+      test: ['CMD', 'python', '-c', 'import socket; socket.create_connection(("127.0.0.1", 8000), 2)']
+      interval: 5s
+      timeout: 3s
+      retries: 30
+  {{/if}}

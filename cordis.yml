@@ -1,0 +1,24 @@
+# dsh-mcp-tunnel — Cordis 装配（composition）。
+#
+# 用法一（源码直载，scratch-plugin 风格）：把本插件作为一行插入任意 dsh profile，
+#   例如在 profile 的 cordis.patch.yml 中追加本文件内容；
+#   或通过 loader 直接加载本文件（行内 name 指向 ./src/index.ts）。
+# 用法二（bundle patch）：本文件同时是 package.json `dsh.bundle.patch` 声明的
+#   patch 层，安装后由 profile 合成器按包路径解析行内引用。
+#
+# 行内 name 相对本文件目录解析；以 bundle 方式安装时（node_modules 内的
+#   dsh-mcp-tunnel），可把 name 换成
+#   'dsh-mcp-tunnel/src/index.ts'（经 package.json exports 解析），
+#   详见 README「安装」一节。
+
+- insert:
+    - id: dsh-mcp-tunnel
+      name: './src/index.ts'
+      config:
+        # 隧道栈的默认部署根目录（每个隧道一个子目录：<deployRoot>/<name>）。
+        # `~` 会在运行时按 HOME 展开。
+        deployRoot: '~/.dsh/mcp-tunnels'
+        # 默认隧道提供方：cloudflare-quick（免账号，开箱即用）。
+        defaultProvider: 'cloudflare-quick'
+        # 容器运行时：docker | podman。
+        dockerBinary: 'docker'
