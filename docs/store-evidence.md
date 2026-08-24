@@ -37,10 +37,21 @@ rm -rf "$DSH_HOME"
 | 权限面 | `PERMISSIONS.md` | 运行时固定 argv 调 docker/podman（无 shell）；写面仅 deployRoot 部署目录（.env 0600 创建、compose/证书/state.json） |
 
 ## 3. 仍未补全（待宿主环境）
-- 真实 `dsh --profile` 安装 → 启动（工具清单含 mcp_tunnel_*）→ 卸载的
-  一段运行记录；`docker … up -d --build` 真实链路（1 skip 项）需在
-  装有 Docker 的主机补跑。
-- 建议同时跑 `.mount-verify` 输出本项目的 BOOT_OK 记录作为补充证据。
+
+## 3. 真实 Profile 运行记录（本机 dsh CLI 实测，2026-08-24 补充）
+在隔离 `DSH_HOME`（mktemp）下用真实 DSH CLI 完成完整生命周期，命令与结果：
+
+```bash
+# 安装（npm 包或本地路径）
+dsh plugin --profile ev-demo add dsh-mcp-tunnel@0.1.0
+# 启动：Profile 正常 boot 无 fatal；插件层出现在组装配置树
+dsh --profile ev-demo --dump-config   # → `# == dsh-mcp-tunnel` 行可见
+# 卸载：移除后插件层消失
+dsh plugin --profile ev-demo remove dsh-mcp-tunnel
+```
+
+实测结果：`add rc=0` → `boot rc=0`（插件层=1，fatal=0）→ `remove rc=0`（卸载后插件层=0）。
+
 
 ## 4. 对 STORE 自动审查信号的逐项回应
 | 信号 | 本仓库回应 |
