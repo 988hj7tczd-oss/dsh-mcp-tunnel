@@ -24,7 +24,8 @@
     "tests",
     "cordis.yml",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "docs/store-evidence.md"
   ],
   "engines": {
     "node": ">=23.6.0"
@@ -40,6 +41,35 @@
   "dsh": {
     "bundle": {
       "patch": "./cordis.yml"
+    },
+    "compatibility": {
+      "node": ">=23.6.0",
+      "dsh": ">=0.1.0"
+    },
+    "permissions": {
+      "summary": "把本机 MCP server 经出站-only 隧道栈暴露给远程 agent：mcp-proxy + cloudflared Quick Tunnel 的 Docker Compose 栈；公开 URL 注册进 dsh-mcp-client streamable-http 配置。用户可选择不建真实隧道。",
+      "commands": [
+        "docker compose up -d --build (compose project, non-shell spawn)",
+        "docker ps",
+        "docker logs --tail <n>",
+        "docker compose down",
+        "<dockerBinary> --version (preflight)"
+      ],
+      "writePaths": [
+        "<deployRoot>/<name>/** (compose/.env/state.json/证书)"
+      ],
+      "externalServices": [
+        "Cloudflare Quick Tunnel 出站端点（默认仅在用户触发 create 时建立）"
+      ],
+      "failureBoundaries": [
+        "preflight 8s 超时",
+        "OUT_OF_BOUNDS 根约束",
+        "state.json 记录下线+lastError"
+      ],
+      "lifecycleEvidence": [
+        "smoke 18 assertions + certs/state 测试",
+        "真实隧道默认不建（LIVE 才建）"
+      ]
     }
   },
   "peerDependencies": {
